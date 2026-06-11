@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-triangle-k8s
+  labels:
+    app: app-triangle-k8s
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-triangle-k8s
+  template:
+    metadata:
+      labels:
+        app: app-triangle-k8s
+    spec:
+      containers:
+        - name: app-triangle-k8s
+          image: mahens/app-triangle-k8s:1.0.0-tp3
+          ports:
+            - containerPort: 8080

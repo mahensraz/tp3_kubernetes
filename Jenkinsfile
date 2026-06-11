@@ -22,6 +22,11 @@ spec:
       volumeMounts:
         - mountPath: /var/run/docker.sock
           name: docker-sock
+    - name: kubectl
+      image: bitnami/kubectl:1.30
+      command: ['cat']
+      tty: true
+    
   volumes:
     - name: docker-sock
       hostPath:
@@ -85,6 +90,14 @@ spec:
                         sh "echo '${dockerHubPass}' | docker login -u ${DOCKER_USER} --password-stdin"
                         sh "docker push ${DOCKER_USER}/${IMAGE_NAME}:${VERSION}"
                     }
+                }
+            }
+        }
+        stage('Deploy to Kubernetes') {
+            steps {
+                container('kubectl') {
+                    sh "kubectl apply -f ./kubernetes/deployment.yaml"
+                    sh "kubectl apply -f ./kubernetes/service.yaml"
                 }
             }
         }
