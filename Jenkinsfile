@@ -59,9 +59,17 @@ spec:
         stage('Build the application') { 
             steps {
                 container('maven') {
-                    // On retire 'clean' pour éviter les téléchargements inutiles et on ajoute des options de retry réseau
-                    // sh 'mvn clean install -DskipTests'
-                    sh 'mvn install -DskipTests -Dmaven.wagon.http.retryHandler.count=3 -Dmaven.wagon.http.pool=false'
+                    // Diagnostic : Test de connectivité HTTP/HTTPS de base vers Maven Central
+                    script {
+                        try {
+                            sh 'curl -I https://repo.maven.apache.org/maven2/'
+                        } catch (Exception e) {
+                            echo "ATTENTION: Le test de connexion vers Maven Central a échoué. Le conteneur n'a probablement pas d'accès Internet sortant."
+                        }
+                    }
+                    
+                    // Exécution du build avec forçage du protocole TLS au cas où le handshake pose problème
+                    sh 'mvn install -DskipTests -Dhttps.protocols=TLSv1.2 -Dmaven.wagon.http.retryHandler.count=3 -Dmaven.wagon.http.pool=false'
                 }
             }
         }
