@@ -1,15 +1,39 @@
 pipeline {
-    agent any
-
-    tools { 
-        jdk 'JDK 21' 
-        maven 'Maven 3.8.7' 
+    // ÉTAPE CRUCIALE TP3 : On demande à Kubernetes de créer un Pod esclave avec Maven et Docker
+    agent {
+        kubernetes {
+            label 'jenkins-agent-tp3'
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    component: ci
+spec:
+  containers:
+    - name: maven
+      image: maven:3.9.6-eclipse-temurin-21
+      command: ['cat']
+      tty: true
+    - name: docker
+      image: docker:latest
+      command: ['cat']
+      tty: true
+      volumeMounts:
+        - mountPath: /var/run/docker.sock
+          name: docker-sock
+  volumes:
+    - name: docker-sock
+      hostPath:
+        path: /var/run/docker.sock
+"""
+        }
     }
 
     environment {
         DOCKER_USER = "mahens" 
-        IMAGE_NAME  = "app-triangle"
-        VERSION     = "1.0.0"
+        IMAGE_NAME  = "app-triangle-k8s" // Nom unique pour différencier du TP2
+        VERSION     = "1.0.0-tp3"        // Version spécifique pour le TP3
     }
 
     stages {
@@ -21,59 +45,54 @@ pipeline {
 
         stage('git checkout') { 
             steps {
-                // Page 5 : Récupération sécurisée depuis votre futur dépôt GitHub
+                // Lien mis à jour vers votre nouveau dépôt public
                 git branch: 'main', 
-                    credentialsId: 'github-auth', 
-                    url: 'https://github.com/mahensraz/tp_jenkins' 
+                    url: 'https://github.com/mahensraz/tp3_kubernetes' 
             }
         }
 
         stage('Build the application') { 
             steps {
-                // Page 5 & 6 : Compilation Maven
-                sh 'mvn clean install -DskipTests'
+                // On force Jenkins à exécuter la commande À L'INTÉRIEUR du conteneur Maven du Pod
+                container('maven') {
+                    sh 'mvn clean install -DskipTests'
+                }
             }
         }
 
         stage('Unit Test Execution') { 
             steps {
-                // Page 7 : Exécution obligatoire des tests unitaires
-                sh 'mvn test'
+                // Idem, exécution isolée dans le conteneur Maven
+                container('maven') {
+                    sh 'mvn test'
+                }
             }
         }
 
         stage('Build the docker image') { 
             steps {
-                // Page 7 : Construction automatisée de l'image Docker
-                sh "docker build --tag ${DOCKER_USER}/${IMAGE_NAME}:${VERSION} ."
+                // On passe dans le conteneur Docker du Pod (qui est relié au Docker Desktop de votre PC)
+                container('docker') {
+                    sh "docker build --tag ${DOCKER_USER}/${IMAGE_NAME}:${VERSION} ."
+                }
             }
         }
 
         stage('Push Image to DockerHub') { 
             steps {
-                // Page 7 : Connexion et transfert sécurisé vers DockerHub
-                withCredentials([string(credentialsId: 'dockerhubpass', variable: 'dockerHubPass')]) {
-                    sh "echo '${dockerHubPass}' | docker login -u ${DOCKER_USER} --password-stdin"
-                    sh "docker push ${DOCKER_USER}/${IMAGE_NAME}:${VERSION}"
+                container('docker') {
+                    withCredentials([string(credentialsId: 'dockerhubpass', variable: 'dockerHubPass')]) {
+                        sh "echo '${dockerHubPass}' | docker login -u ${DOCKER_USER} --password-stdin"
+                        sh "docker push ${DOCKER_USER}/${IMAGE_NAME}:${VERSION}"
+                    }
                 }
             }
         }
     }
 
-    // post {
-    //     failure {
-    //         // Page 9 : Alerte e-mail obligatoire en cas de problème
-    //         emailext body: "Ce Build $BUILD_NUMBER a échoué",
-    //                  recipientProviders: [requestor()], 
-    //                  subject: 'build failure', 
-    //                  to: 'razakatiambolaphillipe@gmail.com'
-    //     }
-    // }
-
     post {
-      failure {
-        // Remplacement d'emailext par un simple echo pour éviter le plantage de Jenkins
-        echo "Le Build a échoué. Vérifiez les logs ci-dessus."
-      }
+        failure {
+            echo "Le Build a échoué. Vérifiez les logs ci-dessus."
+        }
     }
 }
