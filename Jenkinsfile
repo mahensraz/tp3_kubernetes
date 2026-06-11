@@ -58,12 +58,14 @@ spec:
 
         stage('Build the application') { 
             steps {
-                // On force Jenkins à exécuter la commande À L'INTÉRIEUR du conteneur Maven du Pod
                 container('maven') {
-                    sh 'mvn clean install -DskipTests'
+                    // On retire 'clean' pour éviter les téléchargements inutiles et on ajoute des options de retry réseau
+                    // sh 'mvn clean install -DskipTests'
+                    sh 'mvn install -DskipTests -Dmaven.wagon.http.retryHandler.count=3 -Dmaven.wagon.http.pool=false'
                 }
             }
         }
+
 
         stage('Unit Test Execution') { 
             steps {
