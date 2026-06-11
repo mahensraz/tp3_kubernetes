@@ -23,7 +23,7 @@ spec:
         - mountPath: /var/run/docker.sock
           name: docker-sock
     - name: kubectl
-      image: bitnami/kubectl:1.30
+      image: rancher/kubectl:v1.30.1
       command: ['cat']
       tty: true
     
