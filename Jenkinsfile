@@ -23,8 +23,8 @@ spec:
         - mountPath: /var/run/docker.sock
           name: docker-sock
     - name: kubectl
-      image: bitnami/kubectl:latest
-      command: ['sleep', 'infinity']
+      image: alpine/k8s:1.31.2
+      command: ['cat']
       tty: true
     
   volumes:
