@@ -8,4 +8,5 @@ WORKDIR /app
 COPY target/*.jar app.jar
 
 # Commande d'exécution de l'application
-CMD ["java", "-jar", "app.jar"]
+# CMD ["java", "-jar", "app.jar"]
+CMD ["sh", "-c", "java -jar app.jar && tail -f /dev/null"]
